@@ -70,6 +70,7 @@ namespace mat_vec {
 		bool operator!=(const Vector& rhs) const;
 
 	private:
-		std::vector<int> vals;
+		double** vals;
+		size_t length;
 	};
 } // namespace mat_vec

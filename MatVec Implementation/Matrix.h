@@ -54,7 +54,7 @@ namespace mat_vec {
 		// Умножение всех элементов матрицы на константу
 		Matrix operator*(double k) const;
 		Matrix& operator*=(double k);
-
+		 
 		// Деление всех элементов матрицы на константу
 		Matrix operator/(double k) const;
 		Matrix& operator/=(double k);
