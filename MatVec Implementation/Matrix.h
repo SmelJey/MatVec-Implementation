@@ -79,9 +79,11 @@ namespace mat_vec {
 		bool operator!=(const Matrix& rhs) const;
 
 		// Additional methods
-		//friend void swap(Matrix& lhs, Matrix& rhs);
 		void swap(Matrix& rhs);
 		void print();
+		double& operator()(size_t row, size_t col);
+		double operator()(size_t row, size_t col) const;
+
 	private:
 		double** vals;
 		size_t rows, cols;

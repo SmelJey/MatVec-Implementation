@@ -1,4 +1,5 @@
 #include "Matrix.h"
+#include "Vector.h"
 #include <iostream>
 #include <algorithm>
 #include <numeric>
@@ -14,8 +15,7 @@ Matrix Matrix::eye(size_t size) {
 	return unit;
 }
 
-Matrix::Matrix(size_t rows, size_t cols, double value) {
-	this->rows = rows; this->cols = cols;
+Matrix::Matrix(size_t rows, size_t cols, double value) : rows(rows), cols(cols) {
 	vals = new double* [rows]();
 	for (int i = 0; i < rows; i++){
 		vals[i] = new double[cols]();
@@ -24,8 +24,7 @@ Matrix::Matrix(size_t rows, size_t cols, double value) {
 	}
 }
 
-Matrix::Matrix(const Matrix& src) {
-	rows = src.rows; cols = src.cols;
+Matrix::Matrix(const Matrix& src) : rows(src.rows), cols(src.cols) {
 	vals = new double* [rows]();
 	for (int i = 0; i < rows; i++) {
 		vals[i] = new double[cols]();
@@ -75,47 +74,46 @@ std::pair<size_t, size_t> Matrix::shape() const {
 }
 
 double Matrix::get(size_t row, size_t col) const {
+	if (row >= rows || col >= cols)
+		throw std::exception("Out of bounds");
 	return this->vals[row][col];
 }
 
 Matrix Matrix::operator+(const Matrix& rhs) const {
-	Matrix res = *this;
-	res += rhs;
-	return res;
+	Matrix res(*this);
+	return res += rhs;
 }
 
 Matrix& Matrix::operator+=(const Matrix& rhs) {
-	for (int i = 0; i < std::min(rows, rhs.rows); i++) {
-		for (int j = 0; j < std::min(cols, rhs.cols); j++) {
+	if (rows != rhs.rows || cols != rhs.cols)
+		throw std::exception("Can't do operation with these matrices");
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
 			vals[i][j] += rhs.vals[i][j];
-			if (abs(vals[i][j]) < std::numeric_limits<float>::epsilon())
-				vals[i][j] = 0;
 		}
 	}
 	return *this;
 }
 
 Matrix Matrix::operator-(const Matrix& rhs) const {
-	Matrix res = *this;
-	res -= rhs;
-	return res;
+	Matrix res(*this);
+	return res -= rhs;;
 }
 
 Matrix& Matrix::operator-=(const Matrix& rhs) {
-	for (int i = 0; i < std::min(rows, rhs.rows); i++) {
-		for (int j = 0; j < std::min(cols, rhs.cols); j++) {
+	if (rows != rhs.rows || cols != rhs.cols)
+		throw std::exception("Can't do operation with these matrices");
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
 			vals[i][j] -= rhs.vals[i][j];
-			if (abs(vals[i][j]) < std::numeric_limits<float>::epsilon())
-				vals[i][j] = 0;
 		}
 	}
 	return *this;
 }
 
 Matrix Matrix::operator*(const Matrix& rhs) const {
-	Matrix res = *this;
-	res *= rhs;
-	return res;
+	Matrix res(*this);
+	return res *= rhs;
 }
 
 Matrix& Matrix::operator*=(const Matrix& rhs) {
@@ -131,8 +129,6 @@ Matrix& Matrix::operator*=(const Matrix& rhs) {
 			for (int k = 0; k < cols; k++) {
 				res[i][j] += vals[i][k] * rhs.vals[k][j];
 			}
-			if (abs(res[i][j]) < std::numeric_limits<float>::epsilon())
-				res[i][j] = 0;
 		}
 	}
 
@@ -147,33 +143,27 @@ Matrix& Matrix::operator*=(const Matrix& rhs) {
 }
 
 Matrix Matrix::operator*(double k) const {
-	Matrix res = *this;
-	res *= k;
-	return res;
+	Matrix res(*this);
+	return res *= k;
 }
 
 Matrix& Matrix::operator*=(double k) {
 	for (int i = 0; i < rows; i++) {
 		for (int j = 0; j < cols; j++) {
 			vals[i][j] *= k;
-			if (abs(vals[i][j]) < std::numeric_limits<float>::epsilon())
-				vals[i][j] = 0;
 		}
 	}
 	return *this;
 }
 
 Matrix Matrix::operator/(double k) const {
-	Matrix res = *this;
-	res /= k;
-	return res;
+	Matrix res(*this);
+	return res /= k;
 }
 Matrix& Matrix::operator/=(double k) {
 	for (int i = 0; i < rows; i++) {
 		for (int j = 0; j < cols; j++) {
 			vals[i][j] /= k;
-			if (abs(vals[i][j]) < std::numeric_limits<float>::epsilon())
-				vals[i][j] = 0;
 		}
 	}
 	return *this;
@@ -254,6 +244,9 @@ double Matrix::det() const {
 		delete[] tmpMatrix[i];
 	delete[] tmpMatrix;
 
+	if (cols == 0 || rows == 0)
+		return 0;
+
 	return determinant;
 }
 
@@ -285,8 +278,32 @@ Matrix Matrix::inv() const {
 		}
 	}
 	inverted.transpose();
-	inverted /= this->det();
+	double det = this->det();
+
+	if (abs(det) < std::numeric_limits<double>::epsilon())
+		throw std::exception("Determinant is 0");
+
+	inverted /= det;
 	return inverted;
+}
+
+Vector Matrix::operator*(const Vector& vec) const {
+	return vec * this->transposed();
+}
+
+bool Matrix::operator==(const Matrix& rhs) const {
+	if (rows != rhs.rows || cols != rhs.cols)
+		return false;
+	for (int i = 0; i < rows; i++)
+		for (int j = 0; j < cols; j++)
+			if (abs(vals[i][j] - rhs.vals[i][j]) > std::numeric_limits<double>::epsilon())
+				return false;
+
+	return true;
+}
+
+bool Matrix::operator!=(const Matrix& rhs) const {
+	return !(*this == rhs);
 }
 
 // Additional methods
@@ -307,4 +324,15 @@ void Matrix::print() {
 		std::cout << std::endl;
 	}
 	std::cout << std::endl;
+}
+
+double& Matrix::operator()(size_t row, size_t col) {
+	if (row >= rows || col >= cols)
+		throw std::exception("Out of bounds");
+	return vals[row][col];
+}
+double Matrix::operator()(size_t row, size_t col) const {
+	if (row >= rows || col >= cols)
+		throw std::exception("Out of bounds");
+	return vals[row][col];
 }

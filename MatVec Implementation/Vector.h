@@ -69,8 +69,12 @@ namespace mat_vec {
 		bool operator==(const Vector& rhs) const;
 		bool operator!=(const Vector& rhs) const;
 
+		//Additional methods
+		void swap(Vector& rhs);
+		void print();
+
 	private:
-		double** vals;
-		size_t length;
+		double* vals;
+		size_t count;
 	};
 } // namespace mat_vec
