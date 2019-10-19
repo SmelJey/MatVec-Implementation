@@ -126,11 +126,13 @@
     <ClInclude Include="Base.h" />
     <ClInclude Include="catch.hpp" />
     <ClInclude Include="Matrix.h" />
+    <ClInclude Include="SparseMatrix.h" />
     <ClInclude Include="Vector.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Matrix.cpp" />
     <ClCompile Include="Source.cpp" />
+    <ClCompile Include="SparseMatrix.cpp" />
     <ClCompile Include="Vector.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

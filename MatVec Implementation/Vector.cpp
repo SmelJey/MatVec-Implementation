@@ -15,7 +15,7 @@ Vector mat_vec::operator*(double k, const Vector& v) {
 }
 
 Vector::Vector(size_t size, double value) : count(size) {
-	vals = new double[count]();
+    vals = new double[count];
 	for (int i = 0; i < count; i++)
 		vals[i] = value;
 }
@@ -42,13 +42,13 @@ size_t Vector::size() const {
 
 double Vector::operator[](size_t n) const {
 	if (n >= count)
-		throw std::exception("Element is out of bounds");
+		throw std::out_of_range("Element is out of bounds");
 	return vals[n];
 }
 
 double& Vector::operator[](size_t n) {
 	if (n >= count)
-		throw std::exception("Element is out of bounds");
+		throw std::out_of_range("Element is out of bounds");
 	return vals[n];
 }
 
@@ -69,7 +69,7 @@ Vector Vector::normalized() const {
 void Vector::normalize() {
 	int norm = this->norm();
 	if (abs(norm) < std::numeric_limits<double>::epsilon())
-		throw std::exception("Zero vector can't be normalized");
+		throw std::invalid_argument("Zero vector can't be normalized");
 	double invNorm = 1.0 / norm;
 	for (int i = 0; i < count; i++) {
 		vals[i] *= invNorm;
@@ -83,7 +83,7 @@ Vector Vector::operator+(const Vector& rhs) const {
 
 Vector& Vector::operator+=(const Vector& rhs) {
 	if (count != rhs.count)
-		throw std::exception("Can't do operation with these vectors");
+		throw std::invalid_argument("Vectors must have the same size");
 	for (int i = 0; i < count; i++)
 		vals[i] += rhs.vals[i];
 	return *this;
@@ -95,7 +95,7 @@ Vector Vector::operator-(const Vector& rhs) const {
 }
 Vector& Vector::operator-=(const Vector& rhs) {
 	if (count != rhs.count)
-		throw std::exception("Can't do operation with these vectors");
+		throw std::invalid_argument("Vectors must have the same size");
 	for (int i = 0; i < count; i++)
 		vals[i] -= rhs.vals[i];
 	return *this;
@@ -108,7 +108,7 @@ Vector Vector::operator^(const Vector& rhs) const {
 
 Vector& Vector::operator^=(const Vector& rhs) {
 	if (count != rhs.count)
-		throw std::exception("Can't do operation with these vectors");
+		throw std::invalid_argument("Vectors must have the same size");
 	for (int i = 0; i < count; i++)
 		vals[i] *= rhs.vals[i];
 	return *this;
@@ -116,7 +116,7 @@ Vector& Vector::operator^=(const Vector& rhs) {
 
 double Vector::operator*(const Vector& rhs) const {
 	if (count != rhs.count)
-		throw std::exception("Can't get dot product of two vectors with different dimensions");
+		throw std::invalid_argument("Vectors must have the same size");
 	double res = 0;
 	for (int i = 0; i < count; i++)
 		res += vals[i] * rhs.vals[i];
@@ -152,7 +152,7 @@ Vector Vector::operator*(const Matrix& mat) const {
 Vector& Vector::operator*=(const Matrix& mat) {
 	auto shape = mat.shape();
 	if (count != shape.first)
-		throw std::exception("Can't get a product of matrix with this size");
+		throw std::invalid_argument("Vectors must have the same size");
 
 	double* newVals = new double[shape.second]();
 	for (int i = 0; i < shape.second; i++) {

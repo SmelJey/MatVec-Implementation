@@ -1,11 +1,10 @@
 #define CATCH_CONFIG_MAIN
-#pragma warning(push, 0)   
 #include "catch.hpp"
-#pragma warning(pop)
 
 #include "Base.h"
 #include "Matrix.h"
 #include "Vector.h"
+#include "SparseMatrix.h"
 #include <iostream>
 
 using namespace mat_vec;
@@ -31,20 +30,22 @@ TEST_CASE("Matrix copy test", "[Matrix]") {
 }
 
 TEST_CASE("Matrix reshape & shape test", "[Matrix]") {
-	Matrix testMatrix(3, 3, 3.4);
+	Matrix testMatrix(3, 4, 3.4);
 	Matrix copyMatrix(testMatrix);
-	copyMatrix.reshape(2, 4);
+    CHECK_THROWS(copyMatrix.reshape(2, 5));
+	copyMatrix.reshape(2, 6);
 
 	pair<size_t, size_t> sizes1 = testMatrix.shape();
 	pair<size_t, size_t> sizes2 = copyMatrix.shape();
+
 	CHECK(sizes1.first == 3);
-	CHECK(sizes1.second == 3);
+	CHECK(sizes1.second == 4);
 	CHECK(sizes2.first == 2);
-	CHECK(sizes2.second == 4);
+	CHECK(sizes2.second == 6);
 
 	size_t it1 = -1; size_t it2 = 0;
 	for (int i = 0; i < 2; i++)
-		for (int j = 0; j < 4; j++, it2 = (++it2) % 3) {
+		for (int j = 0; j < 5; j++, it2 = (++it2) % 4) {
 			if (it2 == 0)
 				it1++;
 			CHECK(testMatrix(it1, it2) == copyMatrix(i, j));
@@ -126,7 +127,7 @@ TEST_CASE("Matrix and scalar division", "[Matrix]") {
 
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 4; j++)
-			REQUIRE(divMatrix(i, j) == -15);
+			CHECK(divMatrix(i, j) == -15);
 }
 
 TEST_CASE("Matrix transpose", "[Matrix]") {
@@ -324,4 +325,32 @@ TEST_CASE("Vector and scalar division", "[Vector]") {
 TEST_CASE("Vector print test", "[Vector]") {
 	Vector testVector(10, 3.0);
 	CHECK_NOTHROW(testVector.print());
+}
+
+TEST_CASE("Sparse matrix get, set", "[SparseMatrix]") {
+    auto matrix = SparseMatrix::eye(5);
+
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 5; j++) {
+            if (i == j)
+                CHECK(matrix.get(i, j) == 1);
+            else
+                CHECK(matrix.get(i, j) == 0);
+        }
+    }
+
+    CHECK_THROWS(matrix.get(5, 4));
+    CHECK_THROWS(matrix.set(0, 5, 4));
+
+    matrix.set(2, 1, 1);
+    matrix.set(0, 0, 0);
+    matrix.set(0, 1, 0);
+
+    CHECK(matrix.get(1, 1) == 2);
+    CHECK(matrix.get(0, 0) == 0);
+    CHECK(matrix.get(1, 0) == 0);
+}
+
+TEST_CASE("Sparse matrix copy constructor", "[SparseMatrix]") {
+    SparseMatrix testMatrix = SparseMatrix::eye(3);
 }
