@@ -10,25 +10,25 @@ Matrix::Matrix(size_t size, double value) : Matrix(size, size, value) {}
 
 Matrix Matrix::eye(size_t size) {
     Matrix unit(size);
-    for (int i = 0; i < size; i++)
+    for (size_t i = 0; i < size; i++)
         unit.vals[i][i] = 1;
     return unit;
 }
 
 Matrix::Matrix(size_t rows, size_t cols, double value) : rows(rows), cols(cols),
-                                                        vals(new double* [rows]()) {
-    for (int i = 0; i < rows; i++) {
-        vals[i] = new double[cols]();
-        for (int j = 0; j < cols; j++)
+                                                        vals(new double* [rows]) {
+    for (size_t i = 0; i < rows; i++) {
+        vals[i] = new double[cols];
+        for (size_t j = 0; j < cols; j++)
             vals[i][j] = value;
     }
 }
 
 Matrix::Matrix(const Matrix& src) : rows(src.rows), cols(src.cols),
-                                    vals(new double* [src.rows]()){;
-    for (int i = 0; i < rows; i++) {
-        vals[i] = new double[cols]();
-        for (int j = 0; j < cols; j++)
+                                    vals(new double* [src.rows]){;
+    for (size_t i = 0; i < rows; i++) {
+        vals[i] = new double[cols];
+        for (size_t j = 0; j < cols; j++)
             vals[i][j] = src.vals[i][j];
     }
 }
@@ -40,7 +40,7 @@ Matrix& Matrix::operator=(const Matrix& rhs) {
 }
 
 Matrix::~Matrix() {
-    for (int i = 0; i < rows; i++)
+    for (size_t i = 0; i < rows; i++)
         delete[] vals[i];
     delete[] vals;
 }
@@ -48,12 +48,12 @@ Matrix::~Matrix() {
 void Matrix::reshape(size_t rows, size_t cols) {
     if (rows * cols != this->rows * this->cols)
         throw std::invalid_argument("New capacity of matrix must be the same");
-    int i1 = 0, j1 = 0;
+    size_t i1 = 0, j1 = 0;
 
-    double** newVals = new double*[rows]();
-    for (int i = 0; i < rows; i++) {
+    double** newVals = new double*[rows];
+    for (size_t i = 0; i < rows; i++) {
         newVals[i] = new double[cols]();
-        for (int j = 0; i1 < this->rows && j < cols; j++) {
+        for (size_t j = 0; i1 < this->rows && j < cols; j++) {
             newVals[i][j] = vals[i1][j1];
             j1++;
             if (j1 >= this->cols) {
@@ -63,7 +63,7 @@ void Matrix::reshape(size_t rows, size_t cols) {
     }
 
     std::swap(newVals, this->vals);
-    for (int i = 0; i < this->rows; i++)
+    for (size_t i = 0; i < this->rows; i++)
         delete[] newVals[i];
     delete[] newVals;
 
@@ -89,8 +89,8 @@ Matrix Matrix::operator+(const Matrix& rhs) const {
 Matrix& Matrix::operator+=(const Matrix& rhs) {
     if (rows != rhs.rows || cols != rhs.cols)
         throw std::invalid_argument("Matrices must have the same shape");
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < cols; j++) {
             vals[i][j] += rhs.vals[i][j];
         }
     }
@@ -105,8 +105,8 @@ Matrix Matrix::operator-(const Matrix& rhs) const {
 Matrix& Matrix::operator-=(const Matrix& rhs) {
     if (rows != rhs.rows || cols != rhs.cols)
         throw std::invalid_argument("Matrices must have the same shape");
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < cols; j++) {
             vals[i][j] -= rhs.vals[i][j];
         }
     }
@@ -123,19 +123,19 @@ Matrix& Matrix::operator*=(const Matrix& rhs) {
         throw std::invalid_argument("Can't do multiplication with matrices of these sizes");
 
     double** res = new double* [rows]();
-    for (int i = 0; i < rows; i++)
+    for (size_t i = 0; i < rows; i++)
         res[i] = new double[rhs.cols]();
 
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < rhs.cols; j++) {
-            for (int k = 0; k < cols; k++) {
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < rhs.cols; j++) {
+            for (size_t k = 0; k < cols; k++) {
                 res[i][j] += vals[i][k] * rhs.vals[k][j];
             }
         }
     }
 
     std::swap(res, this->vals);
-    for (int i = 0; i < rows; i++)
+    for (size_t i = 0; i < rows; i++)
         delete[] res[i];
     delete[] res;
 
@@ -150,8 +150,8 @@ Matrix Matrix::operator*(double k) const {
 }
 
 Matrix& Matrix::operator*=(double k) {
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < cols; j++) {
             vals[i][j] *= k;
         }
     }
@@ -163,8 +163,10 @@ Matrix Matrix::operator/(double k) const {
     return res /= k;
 }
 Matrix& Matrix::operator/=(double k) {
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
+    if (abs(k) < std::numeric_limits<double>::epsilon())
+        throw std::invalid_argument("Division by zero");
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < cols; j++) {
             vals[i][j] /= k;
         }
     }
@@ -179,18 +181,18 @@ Matrix Matrix::transposed() const {
 
 void Matrix::transpose() {
     double** newVals = new double* [cols]();
-    for (int i = 0; i < cols; i++)
+    for (size_t i = 0; i < cols; i++)
         newVals[i] = new double[rows]();
 
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < cols; j++) {
             newVals[j][i] = vals[i][j];
         }
     }
 
     std::swap(newVals, vals);
 
-    for (int i = 0; i < rows; i++)
+    for (size_t i = 0; i < rows; i++)
         delete[] newVals[i];
     delete[] newVals;
 
@@ -202,17 +204,17 @@ double Matrix::det() const {
         throw std::invalid_argument("This matrix is not a square");
 
     double** tmpMatrix = new double* [rows]();
-    for (int i = 0; i < rows; i++) {
+    for (size_t i = 0; i < rows; i++) {
         tmpMatrix[i] = new double[cols]();
-        for (int j = 0; j < cols; j++)
+        for (size_t j = 0; j < cols; j++)
             tmpMatrix[i][j] = vals[i][j];
     }
 
     double determinant = 1;
-    for (int i = 0; i < cols; i++) {
+    for (size_t i = 0; i < cols; i++) {
         int maxElem = i;
 
-        for (int j = i + 1; j < rows; j++) {
+        for (size_t j = i + 1; j < rows; j++) {
             if (abs(tmpMatrix[maxElem][i]) < abs(tmpMatrix[j][i]))
                 maxElem = j;
         }
@@ -229,20 +231,20 @@ double Matrix::det() const {
 
         determinant *= tmpMatrix[i][i];
 
-        for (int j = i + 1; j < cols; j++) {
+        for (size_t j = i + 1; j < cols; j++) {
             tmpMatrix[i][j] /= tmpMatrix[i][i];
         }
 
-        for (int j = 0; j < rows; j++) {
+        for (size_t j = 0; j < rows; j++) {
             if (abs(tmpMatrix[j][i]) > std::numeric_limits<float>::epsilon() && i != j) {
-                for (int k = i + 1; k < cols; k++) {
+                for (size_t k = i + 1; k < cols; k++) {
                     tmpMatrix[j][k] -= tmpMatrix[j][i] * tmpMatrix[i][k];
                 }
             }
         }
     }
 
-    for (int i = 0; i < rows; i++)
+    for (size_t i = 0; i < rows; i++)
         delete[] tmpMatrix[i];
     delete[] tmpMatrix;
 
@@ -262,18 +264,18 @@ Matrix Matrix::inv() const {
         throw std::invalid_argument("Determinant is 0");
     
     Matrix inverted(*this);
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < cols; j++) {
             Matrix minor(rows - 1);
 
             int dy = 0;
-            for (int y = 0; y < rows; y++) {
+            for (size_t y = 0; y < rows; y++) {
                 if (y == i) {
                     dy++; continue;
                 }
 
                 int dx = 0;
-                for (int x = 0; x < cols; x++) {
+                for (size_t x = 0; x < cols; x++) {
                     if (x == j) {
                         dx++; continue;
                     }
@@ -297,8 +299,8 @@ Vector Matrix::operator*(const Vector& vec) const {
 bool Matrix::operator==(const Matrix& rhs) const {
     if (rows != rhs.rows || cols != rhs.cols)
         return false;
-    for (int i = 0; i < rows; i++)
-        for (int j = 0; j < cols; j++)
+    for (size_t i = 0; i < rows; i++)
+        for (size_t j = 0; j < cols; j++)
             if (abs(vals[i][j] - rhs.vals[i][j]) > std::numeric_limits<float>::epsilon())
                 return false;
 
@@ -320,8 +322,8 @@ void Matrix::swap(Matrix& rhs) {
 }
 
 void Matrix::print() {
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < cols; j++) {
             std::cout << vals[i][j] << " ";
         }
         std::cout << std::endl;

@@ -11,7 +11,7 @@ using namespace mat_vec;
 SparseMatrix::SparseMatrix(size_t size) : SparseMatrix(size, size) {}
 
 SparseMatrix::SparseMatrix(const Matrix& src) : rows(src.shape().first), cols(src.shape().second),
-                                                        rowsOffset(new size_t[rows + 1]()) {
+                                                        rowsOffset(new size_t[src.shape().first + 1]) {
     size_t count = 0;
     for (size_t i = 0; i < rows; i++) {
         for (size_t j = 0; j < cols; j++) {
@@ -26,14 +26,13 @@ SparseMatrix::SparseMatrix(const Matrix& src) : rows(src.shape().first), cols(sr
 
     size_t it = 0;
     for (size_t i = 0; i < rows; i++) {
-        for (size_t j = 0; j < cols; j++) {
+        rowsOffset[i] = it;
+        for (size_t j = 0; j < cols; j++) {          
             if (src(i, j) != 0) {
-                if (rowsOffset[i] == 0)
-                    rowsOffset[i] = it;
                 vals[it] = src(i, j);
                 colsIndxs[it] = j;
                 it++;
-            }    
+            } 
         }
     }
 }
@@ -43,23 +42,20 @@ SparseMatrix SparseMatrix::eye(size_t size) {
 
     for (int i = 0; i < size; i++) {
         matrix.set(1, i, i);
-        matrix.print();
     }
 
     return matrix;
 }
 
-SparseMatrix::SparseMatrix(size_t rows, size_t cols) : rows(rows), cols(cols)/*,
-                                    rowsOffset(new int[rows + 1]()),
-                                    colsIndxs(new int[cols]()), vals(new double[cols]()) */{
-    rowsOffset = new size_t[rows + 1]();
-    colsIndxs = new size_t[cols]();
-    vals = new double[cols]();
+SparseMatrix::SparseMatrix(size_t rows, size_t cols) : rows(rows), cols(cols),
+                                    rowsOffset(new size_t[rows + 1]()),
+                                    colsIndxs(new size_t[0]), vals(new double[0]) {
     rowsOffset[rows] = 1;
 }
 
 SparseMatrix::SparseMatrix(const SparseMatrix& src) : rows(src.rows), cols(src.cols),
-                                    rowsOffset(new size_t[src.rows + 1]()), colsIndxs(new size_t[src.rowsOffset[src.rows] - 1]),
+                                    rowsOffset(new size_t[src.rows + 1]), 
+                                    colsIndxs(new size_t[src.rowsOffset[src.rows] - 1]),
                                     vals(new double[src.rowsOffset[src.rows] - 1]) {
     for (size_t i = 0; i <= rows; i++)
         rowsOffset[i] = src.rowsOffset[i];
@@ -70,10 +66,28 @@ SparseMatrix::SparseMatrix(const SparseMatrix& src) : rows(src.rows), cols(src.c
     }
 }
 
+SparseMatrix& mat_vec::SparseMatrix::operator=(const SparseMatrix& rhs) {
+    SparseMatrix tmp(rhs);
+    swap(tmp);
+    return *this;
+}
+
 SparseMatrix::~SparseMatrix() {
     delete[] vals;
     delete[] colsIndxs;
     delete[] rowsOffset;
+}
+
+std::pair<size_t, size_t> mat_vec::SparseMatrix::shape() const {
+    return std::pair<size_t, size_t>(rows, cols);
+}
+
+double mat_vec::SparseMatrix::density() const {
+    return (double)(rowsOffset[rows] - 1) / ((double)rows * cols);
+}
+
+double mat_vec::SparseMatrix::sparsity() const {
+    return 1 - density();
 }
 
 void SparseMatrix::set(double val, size_t row, size_t col) {
@@ -156,6 +170,131 @@ double SparseMatrix::get(size_t row, size_t col) const {
     return 0.0;
 }
 
+SparseMatrix mat_vec::SparseMatrix::operator+(const SparseMatrix& rhs) const {
+    SparseMatrix tmp(*this);
+    return tmp += rhs;
+}
+
+SparseMatrix& mat_vec::SparseMatrix::operator+=(const SparseMatrix& rhs) {
+    if (rows != rhs.rows || cols != rhs.cols)
+        throw std::invalid_argument("Matrices must have the same shape");
+
+    size_t row = 0;
+    for (size_t i = 0; i < rhs.rowsOffset[rows] - 1; i++) {
+        while (i == rhs.rowsOffset[row + 1])
+            row++;
+        double val = get(row, rhs.colsIndxs[i]) + rhs.vals[i];
+        set(val, row, rhs.colsIndxs[i]);
+    }
+
+    return *this;
+}
+
+SparseMatrix mat_vec::SparseMatrix::operator-(const SparseMatrix& rhs) const {
+    SparseMatrix tmp(*this);
+    return tmp -= rhs;
+}
+
+SparseMatrix& mat_vec::SparseMatrix::operator-=(const SparseMatrix& rhs) {
+    if (rows != rhs.rows || cols != rhs.cols)
+        throw std::invalid_argument("Matrices must have the same shape");
+
+    size_t row = 0;
+    for (size_t i = 0; i < rhs.rowsOffset[rows] - 1; i++) {
+        while (i == rhs.rowsOffset[row + 1])
+            row++;
+        double val = get(row, rhs.colsIndxs[i]) - rhs.vals[i];
+        set(val, row, rhs.colsIndxs[i]);
+    }
+
+    return *this;
+}
+
+SparseMatrix mat_vec::SparseMatrix::operator*(const SparseMatrix& rhs) const {
+    SparseMatrix tmp(*this);
+    return tmp *= rhs;
+}
+
+SparseMatrix& mat_vec::SparseMatrix::operator*=(const SparseMatrix& rhs) {
+    if (this->cols != rhs.rows)
+        throw std::invalid_argument("Can't do multiplication with matrices of these sizes");
+
+    SparseMatrix res(this->rows, rhs.cols);
+    SparseMatrix transpRhs = rhs.transposed();
+
+    double curVal = 0;
+    size_t row1 = 0, row2 = 0;
+    for (size_t row2 = 0; row2 < transpRhs.rows; row2++) {
+        for (size_t i = 0; i < rowsOffset[rows] - 1; i++) {
+            while (i == rowsOffset[row1 + 1]) {
+                if (abs(curVal) > std::numeric_limits<double>::epsilon()) {
+                    res.set(curVal, row1, row2);
+                }
+                row1++;
+                curVal = 0;
+            }
+
+            curVal += vals[i] * transpRhs.get(row2, colsIndxs[i]);
+        }
+
+        if (abs(curVal) > std::numeric_limits<double>::epsilon()) {
+            res.set(curVal, row1, row2);
+            curVal = 0;
+        }
+        row1 = 0;
+    }
+    
+
+    swap(res);
+    return *this;
+}
+
+SparseMatrix mat_vec::SparseMatrix::operator*(double k) const {
+    SparseMatrix tmp(*this);
+    return tmp *= k;
+}
+
+SparseMatrix& mat_vec::SparseMatrix::operator*=(double k) {
+    for (size_t i = 0; i < rowsOffset[rows] - 1; i++)
+        vals[i] *= k;
+    return *this;
+}
+
+SparseMatrix mat_vec::SparseMatrix::operator/(double k) const {
+    SparseMatrix tmp(*this);
+    return tmp /= k;
+}
+
+SparseMatrix& mat_vec::SparseMatrix::operator/=(double k) {
+    if (abs(k) < std::numeric_limits<double>::epsilon())
+        throw std::invalid_argument("Division by zero");
+    for (size_t i = 0; i < rowsOffset[rows] - 1; i++)
+        vals[i] /= k;
+    return *this;
+}
+
+Vector mat_vec::SparseMatrix::operator*(const Vector& vec) const {
+    return vec * this->transposed();
+}
+
+Matrix SparseMatrix::denseMatrix() const {
+    Matrix res(rows, cols);
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = rowsOffset[i]; j < std::min(rowsOffset[i + 1], rowsOffset[rows] - 1); j++)
+            res(i, colsIndxs[j]) = vals[j];
+    }
+
+    return res;
+}
+
+double mat_vec::SparseMatrix::det() const {
+    return this->denseMatrix().det();
+}
+
+SparseMatrix mat_vec::SparseMatrix::inv() const {
+    return SparseMatrix(this->denseMatrix().inv());
+}
+
 void SparseMatrix::swap(SparseMatrix& rhs) {
     std::swap(this->cols, rhs.cols);
     std::swap(this->rows, rhs.rows);
@@ -164,7 +303,7 @@ void SparseMatrix::swap(SparseMatrix& rhs) {
     std::swap(this->colsIndxs, rhs.colsIndxs);
 }
 
-void SparseMatrix::print() {
+void SparseMatrix::print() const {
     std::cout << "SparseMatrix print" << std::endl;
     std::cout << "Sizes: " << rows << " " << cols << std::endl;
     std::cout << "Real size " << rowsOffset[rows] << std::endl;
@@ -182,4 +321,42 @@ void SparseMatrix::print() {
     for (size_t i = 0; i < rowsOffset[rows] - 1; i++)
         std::cout << vals[i] << " ";
     std::cout << std::endl << std::endl;
+}
+
+SparseMatrix mat_vec::SparseMatrix::transposed() const {
+    SparseMatrix res(*this);
+    res.transpose();
+    return res;
+}
+
+void mat_vec::SparseMatrix::transpose() {
+    SparseMatrix tmp(cols, rows);
+    size_t row = 0;
+    for (size_t i = 0; i < rowsOffset[rows] - 1; i++) {
+        while (i == rowsOffset[row + 1])
+            row++;
+        tmp.set(vals[i], colsIndxs[i], row);
+    }
+    swap(tmp);
+}
+
+bool mat_vec::SparseMatrix::operator==(const SparseMatrix& rhs) const {
+    if (this->shape() != rhs.shape())
+        return false;
+    if (this->rowsOffset[rows] != rhs.rowsOffset[rhs.rows])
+        return false;
+
+    size_t row = 0;
+    for (size_t i = 0; i < rowsOffset[rows] - 1; i++) {
+        while (i == rowsOffset[row + 1])
+            row++;
+        if (abs(vals[i] - rhs.get(row, colsIndxs[i])) > std::numeric_limits<float>::epsilon())
+            return false;
+    }
+
+    return true;
+}
+
+bool mat_vec::SparseMatrix::operator!=(const SparseMatrix& rhs) const {
+    return !(*this == rhs);
 }

@@ -65,6 +65,9 @@ namespace mat_vec {
 		Vector operator*(const Matrix& mat) const;
 		Vector& operator*=(const Matrix& mat);
 
+        Vector operator*(const SparseMatrix& mat) const;
+        Vector& operator*=(const SparseMatrix& mat);
+
 		// Поэлементное сравнение
 		bool operator==(const Vector& rhs) const;
 		bool operator!=(const Vector& rhs) const;

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "base.h"
+#include "Base.h"
+#include "Vector.h"
 #include <tuple>
 
 namespace mat_vec {
@@ -63,6 +64,9 @@ namespace mat_vec {
         SparseMatrix operator/(double k) const;
         SparseMatrix& operator/=(double k);
 
+        Vector operator*(const Vector& vec) const;
+        friend Vector& Vector::operator*=(const SparseMatrix& mat);
+
         // Возвращает новую матрицу, полученную транспонированием текущей (this)
         SparseMatrix transposed() const;
 
@@ -70,15 +74,21 @@ namespace mat_vec {
         void transpose();
 
         // Поэлементное сравнение
-        bool operator==(const Matrix& rhs) const;
-        bool operator!=(const Matrix& rhs) const;
+        bool operator==(const SparseMatrix& rhs) const;
+        bool operator!=(const SparseMatrix& rhs) const;
 
         // Возвращает обычную матрицу, соответствующую данной
         Matrix denseMatrix() const;
 
+        // Определитель (Медленная реализация)
+        double det() const;
+
+        // Обратная матрица (Медленная реализация)
+        SparseMatrix inv() const;
+
         // Additional methods
         void swap(SparseMatrix& rhs);
-        void print();
+        void print() const;
 
     private:
         double* vals;

@@ -1,6 +1,7 @@
 #include "Vector.h"
 #include "Base.h"
 #include "Matrix.h"
+#include "SparseMatrix.h"
 #include <algorithm>
 #include <iostream>
 
@@ -8,7 +9,7 @@ using namespace mat_vec;
 
 Vector mat_vec::operator*(double k, const Vector& v) {
 	Vector res(v);
-	for (int i = 0; i < res.size(); i++)
+	for (size_t i = 0; i < res.size(); i++)
 		res[i] *= k;
 
 	return res;
@@ -16,13 +17,13 @@ Vector mat_vec::operator*(double k, const Vector& v) {
 
 Vector::Vector(size_t size, double value) : count(size) {
     vals = new double[count];
-	for (int i = 0; i < count; i++)
+	for (size_t i = 0; i < count; i++)
 		vals[i] = value;
 }
 
 Vector::Vector(const Vector& src) : count(src.count) {
 	vals = new double[count]();
-	for (int i = 0; i < count; i++)
+	for (size_t i = 0; i < count; i++)
 		vals[i] = src.vals[i];
 }
 
@@ -54,7 +55,7 @@ double& Vector::operator[](size_t n) {
 
 double Vector::norm() const {
 	double res = 0;
-	for (int i = 0; i < count; i++)
+	for (size_t i = 0; i < count; i++)
 		res += vals[i] * vals[i];
 
 	return sqrt(res);
@@ -67,11 +68,11 @@ Vector Vector::normalized() const {
 }
 
 void Vector::normalize() {
-	int norm = this->norm();
+	double norm = this->norm();
 	if (abs(norm) < std::numeric_limits<double>::epsilon())
 		throw std::invalid_argument("Zero vector can't be normalized");
 	double invNorm = 1.0 / norm;
-	for (int i = 0; i < count; i++) {
+	for (size_t i = 0; i < count; i++) {
 		vals[i] *= invNorm;
 	}
 }
@@ -84,7 +85,7 @@ Vector Vector::operator+(const Vector& rhs) const {
 Vector& Vector::operator+=(const Vector& rhs) {
 	if (count != rhs.count)
 		throw std::invalid_argument("Vectors must have the same size");
-	for (int i = 0; i < count; i++)
+	for (size_t i = 0; i < count; i++)
 		vals[i] += rhs.vals[i];
 	return *this;
 }
@@ -96,7 +97,7 @@ Vector Vector::operator-(const Vector& rhs) const {
 Vector& Vector::operator-=(const Vector& rhs) {
 	if (count != rhs.count)
 		throw std::invalid_argument("Vectors must have the same size");
-	for (int i = 0; i < count; i++)
+	for (size_t i = 0; i < count; i++)
 		vals[i] -= rhs.vals[i];
 	return *this;
 }
@@ -109,7 +110,7 @@ Vector Vector::operator^(const Vector& rhs) const {
 Vector& Vector::operator^=(const Vector& rhs) {
 	if (count != rhs.count)
 		throw std::invalid_argument("Vectors must have the same size");
-	for (int i = 0; i < count; i++)
+	for (size_t i = 0; i < count; i++)
 		vals[i] *= rhs.vals[i];
 	return *this;
 }
@@ -118,7 +119,7 @@ double Vector::operator*(const Vector& rhs) const {
 	if (count != rhs.count)
 		throw std::invalid_argument("Vectors must have the same size");
 	double res = 0;
-	for (int i = 0; i < count; i++)
+	for (size_t i = 0; i < count; i++)
 		res += vals[i] * rhs.vals[i];
 	return res;
 }
@@ -129,7 +130,7 @@ Vector Vector::operator*(double k) const {
 }
 
 Vector& Vector::operator*=(double k) {
-	for (int i = 0; i < count; i++)
+	for (size_t i = 0; i < count; i++)
 		vals[i] *= k;
 	return *this;
 }
@@ -139,7 +140,9 @@ Vector Vector::operator/(double k) const {
 	return res /= k;
 }
 Vector& Vector::operator/=(double k) {
-	for (int i = 0; i < count; i++)
+    if (abs(k) < std::numeric_limits<double>::epsilon())
+        throw std::invalid_argument("Division by zero");
+	for (size_t i = 0; i < count; i++)
 		vals[i] /= k;
 	return *this;
 }
@@ -152,11 +155,11 @@ Vector Vector::operator*(const Matrix& mat) const {
 Vector& Vector::operator*=(const Matrix& mat) {
 	auto shape = mat.shape();
 	if (count != shape.first)
-		throw std::invalid_argument("Vectors must have the same size");
+		throw std::invalid_argument("Vector must have the same size as matrix");
 
 	double* newVals = new double[shape.second]();
-	for (int i = 0; i < shape.second; i++) {
-		for (int j = 0; j < count; j++) {
+	for (size_t i = 0; i < shape.second; i++) {
+		for (size_t j = 0; j < count; j++) {
 			newVals[i] += vals[j] * mat(j, i);
 		}
 	}
@@ -169,10 +172,31 @@ Vector& Vector::operator*=(const Matrix& mat) {
 	return *this;
 }
 
+Vector mat_vec::Vector::operator*(const SparseMatrix& mat) const {
+    Vector tmp(*this);
+    return tmp *= mat;
+}
+
+Vector& mat_vec::Vector::operator*=(const SparseMatrix& mat) {
+    if (mat.shape().first != count)
+        throw std::invalid_argument("Vector must have the same size as matrix");
+
+    Vector res(mat.shape().second);
+    size_t row = 0;
+    for (size_t i = 0; i < mat.rowsOffset[mat.rows] - 1; i++) {
+        while (mat.rowsOffset[row + 1] == i)
+            row++;
+        res[mat.colsIndxs[i]] += mat.vals[i] * (*this)[row];
+    }
+    
+    swap(res);
+    return *this;
+}
+
 bool Vector::operator==(const Vector& rhs) const {
 	if (rhs.count != count)
 		return false;
-	for (int i = 0; i < count; i++) 
+	for (size_t i = 0; i < count; i++)
 		if (rhs.vals[i] != vals[i])
 			return false;
 	return true;
@@ -191,7 +215,7 @@ void Vector::swap(Vector& rhs) {
 }
 
 void Vector::print() {
-	for (int i = 0; i < count; i++)
+	for (size_t i = 0; i < count; i++)
 		std::cout << vals[i] << " ";
-	std::cout << std::endl;
+	std::cout << std::endl << std::endl;
 }
